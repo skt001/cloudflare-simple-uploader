@@ -48,7 +48,7 @@ npx wrangler login
 npx wrangler d1 create uploader-db
 ```
 
-`d1 create` が表示した `database_id` を、`wrangler.jsonc` の `YOUR_D1_DATABASE_ID` と置き換えます。binding名は `DB` のままにしてください。続けてマイグレーションの適用とデプロイを行います。
+`d1 create` が表示した `database_id` を、`wrangler.jsonc` の `YOUR_D1_DATABASE_ID` と置き換えます。binding名は `DB` のままにしてください。すでに同名のD1がある場合（`A database with that name already exists`）は、`npx wrangler d1 info uploader-db` で既存の `database_id` を確認できます。続けてマイグレーションの適用とデプロイを行います。
 
 ```sh
 npm run db:apply:remote
