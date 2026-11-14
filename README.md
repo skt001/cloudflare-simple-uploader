@@ -37,15 +37,12 @@ npm run dev
 
 ## Cloudflareへデプロイ
 
-`uploader/` ディレクトリで、まず依存パッケージをインストールします。npmのスクリプトはローカルにインストールされたWranglerを使います。
-
-```sh
-npm install
-```
+`uploader/` ディレクトリで実行します。最初に `npm install` が必要です（npmのスクリプトはローカルにインストールされたWranglerを使うため、省略すると `wrangler: not found` になります）。
 
 設定ファイルは `wrangler.example.jsonc` をコピーして作ります。`wrangler.jsonc` は各自の環境固有の設定（D1のID）を含むため、`.gitignore` で除外しています。
 
 ```sh
+npm install
 cp wrangler.example.jsonc wrangler.jsonc
 npx wrangler login
 npx wrangler d1 create uploader-db
