@@ -38,7 +38,7 @@ Wranglerが表示するURLをブラウザーで開き、100MiBを試す前に、
 
 ## Cloudflareへデプロイ
 
-`uploader/` ディレクトリで実行します。最初に `npm install` が必要です（npmのスクリプトはローカルにインストールされたWranglerを使うため、省略すると `wrangler: not found` になります）。
+リポジトリのルートで実行します。最初に `git clone https://github.com/skt001/cloudflare-simple-uploader.git` で取得して移動し、`npm install` を実行してください（npmのスクリプトはローカルにインストールされたWranglerを使うため、省略すると `wrangler: not found` になります）。
 
 設定ファイルは `wrangler.example.jsonc` をコピーして作ります。`wrangler.jsonc` は `d1_databases`（D1のID）をWranglerが書き込む各自の環境固有の設定なので、`.gitignore` で除外しています。
 
@@ -116,7 +116,7 @@ D1には1行2,000,000バイト、1クエリ結果50MB、無料枠で1 Worker呼�
 
 パスワードのハッシュ計算と認証もWorkersのCPU時間を使います。無料枠の実環境で、パスワードと削除キーを両方設定したアップロード、認証、削除のCPU時間を確認してください。ローカルで成功しても無料枠での動作は保証されません。
 
-`npm test` は一時ディレクトリ内のローカルD1を使い、既存データの移行、画面API・v1 APIとPython CLIの基本操作を確認します。設定済みのリモートDBには接続しません。
+`npm test` は一時ディレクトリ内のローカルD1を使い、既存データの移行、画面向けAPIと `/api/v1` のアップロード・認証・ダウンロード・削除を確認します。Python CLIはUser-Agentとエラー表示のみ確認し、`put`・`get`・`delete` の実行は自動テストの対象外です。設定済みのリモートDBには接続しません。
 
 ## 未実装・運用上の制約
 

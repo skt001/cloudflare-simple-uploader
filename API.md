@@ -1,6 +1,6 @@
 # アップローダー API 仕様
 
-`/api/v1` とPython CLIを実装済みです。既存の画面向け `/api` とは別のAPIです。
+`/api/v1` とPython CLIを実装済みです（本書は実装に合わせた仕様です）。既存の画面向け `/api` とは別のAPIです。
 本番で使用するにはマイグレーションの適用とWorkerのデプロイが必要です。
 
 ## 目的と前提
@@ -71,10 +71,9 @@ CLIはまず `number` をUUIDに解決し、以後の取得・削除にはUUID�
 | 416 | `INVALID_RANGE` | ダウンロード範囲が不正または許容サイズを超過 |
 | 429 | `RATE_LIMITED` | 認証などの試行回数制限 |
 | 500 | `INTERNAL_ERROR` | 予期しない内部エラー |
-| 503 | `SERVICE_UNAVAILABLE` | 一時的なDB障害など |
 | 507 | `CAPACITY_EXCEEDED` | 保存予約またはD1容量の上限 |
 
-`429`・一時的な`503`では、待機時間を示せる場合 `Retry-After` を返す。
+`Retry-After` ヘッダーは現在返さない（429でも付かない）。
 Cloudflare側の制限やWorker停止では、このJSON形式にならない場合がある。
 クライアントはHTTPステータス、応答形式、接続失敗のいずれも確認する。
 
