@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ファイルをアップロードして共有できるアップローダーです。">
+  <title>アップローダー</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="/">アップローダー</a>
+      <p>ファイルを共有するためのアップローダーです</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel upload-panel" aria-labelledby="upload-title">
+      <h1 id="upload-title">ファイルをアップロード</h1>
+      <p class="intro">ファイルを選択して、コメントを添えて投稿できます。</p>
+      <p class="notice">
+        個人情報や公開する権利のないファイルは投稿しないでください。
+        パスワードはアクセス制限であり、ファイルを暗号化するものではありません。
+      </p>
+      <form id="upload-form">
+        <label class="field">
+          <span>ファイル</span>
+          <input id="file-input" name="file" type="file" required>
+          <small>1ファイル最大100MiB</small>
+        </label>
+        <label class="field">
+          <span>コメント <small>（任意・1,000文字まで）</small></span>
+          <textarea id="comment-input" name="comment" rows="3" maxlength="1000"></textarea>
+        </label>
+        <label class="field">
+          <span>ダウンロードパスワード <small>（任意・128文字まで）</small></span>
+          <input id="password-input" name="password" type="password" maxlength="128" autocomplete="new-password">
+          <small>空欄の場合は誰でもダウンロードできます。</small>
+        </label>
+        <label class="field">
+          <span>削除キー <small>（任意・128文字まで）</small></span>
+          <input id="delete-key-input" name="deleteKey" type="password" maxlength="128" autocomplete="new-password">
+          <small>空欄の場合、誰でも削除できます。設定したキーは忘れずに保管してください。</small>
+        </label>
+        <div class="upload-actions">
+          <button id="upload-button" type="submit">アップロード</button>
+          <button id="cancel-button" class="secondary" type="button" hidden>中止</button>
+        </div>
+        <progress id="upload-progress" max="1" value="0" hidden></progress>
+        <p id="upload-status" class="message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="list-section" aria-labelledby="list-title">
+      <div class="list-heading">
+        <div>
+          <h2 id="list-title">ファイル一覧</h2>
+          <p id="storage-usage" class="muted">保存容量を確認しています…</p>
+          <progress id="storage-progress" max="1" value="0" aria-label="保存予約容量" hidden></progress>
+        </div>
+        <button id="refresh-button" class="secondary" type="button">更新</button>
+      </div>
+      <p id="list-status" class="message" role="status" aria-live="polite"></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">No.</th>
+              <th scope="col">ファイル名・コメント</th>
+              <th scope="col">サイズ</th>
+              <th scope="col">日時</th>
+              <th scope="col">DL</th>
+              <th scope="col"><span class="visually-hidden">操作</span></th>
+            </tr>
+          </thead>
+          <tbody id="file-list"></tbody>
+        </table>
+      </div>
+      <button id="more-button" class="secondary more-button" type="button" hidden>さらに表示</button>
+    </section>
+  </main>
+
+  <dialog id="secret-dialog" aria-labelledby="secret-title">
+    <form id="secret-form">
+      <h2 id="secret-title"></h2>
+      <p id="secret-description"></p>
+      <label class="field">
+        <span id="secret-label"></span>
+        <input id="secret-input" type="password" maxlength="128" required autocomplete="off">
+      </label>
+      <div class="upload-actions">
+        <button type="submit">確認</button>
+        <button id="secret-cancel" class="secondary" type="button">キャンセル</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="container footer">
+    <p>管理画面や不正投稿対策はありません。削除キーのないファイルは誰でも削除できます。</p>
+  </footer>
+</body>
+</html>

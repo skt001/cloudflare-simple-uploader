@@ -1,0 +1,4 @@
+# uploader.py の既定サーバーを指定するサンプルです。
+# ~/.uploader にコピーするか、~/.config/uploader/config.json に {"url": "..."} と書きます。
+# コメント以外の最初の行がサーバーURLです。パスワードはここに書かないでください。
+https://uploader.<アカウントのサブドメイン>.workers.dev
