@@ -27,19 +27,20 @@ uploader.jp のような番号付きファイル一覧と、ブラウザーか�
 
 ## ローカルで試す
 
-Node.jsとnpmが必要です。先に下の「Cloudflareへデプロイ」の手順でD1を作成し、マイグレーションを適用してください。
+Node.jsとnpmが必要です。先に下の「Cloudflareへデプロイ」の手順で設定ファイルを作り、D1を作成してください。ローカル実行にはローカル用のD1を使います。
 
 ```sh
+npm run db:apply:local
 npm run dev
 ```
 
-この設定は `remote: true` のため、ローカル実行でも**自分のCloudflareアカウントの実際のD1**を使います。試したデータはそのD1に保存されます。Wranglerが表示するURLをブラウザーで開き、100MiBを試す前に、小さなファイルからアップロードとダウンロードを確認してください。
+Wranglerが表示するURLをブラウザーで開き、100MiBを試す前に、小さなファイルからアップロードとダウンロードを確認してください。
 
 ## Cloudflareへデプロイ
 
 `uploader/` ディレクトリで実行します。最初に `npm install` が必要です（npmのスクリプトはローカルにインストールされたWranglerを使うため、省略すると `wrangler: not found` になります）。
 
-設定ファイルは `wrangler.example.jsonc` をコピーして作ります。`wrangler.jsonc` は各自の環境固有の設定（D1のID）を含むため、`.gitignore` で除外しています。
+設定ファイルは `wrangler.example.jsonc` をコピーして作ります。`wrangler.jsonc` は `d1_databases`（D1のID）をWranglerが書き込む各自の環境固有の設定なので、`.gitignore` で除外しています。
 
 ```sh
 npm install
@@ -48,18 +49,24 @@ npx wrangler login
 npx wrangler d1 create uploader-db
 ```
 
-`d1 create` の最後に「Would you like Wrangler to add it on your behalf?」と聞かれたら、**`no`** と答えてください（`yes` だと、別名のbindingが重複して追加されます）。表示された `database_id` を、自分で `wrangler.jsonc` の `YOUR_D1_DATABASE_ID` と置き換えます。binding名は `DB` のままにしてください。すでに同名のD1がある場合（`A database with that name already exists`）は、`npx wrangler d1 info uploader-db` で既存の `database_id` を確認できます。続けてマイグレーションの適用とデプロイを行います。
+`d1 create` の最後に、設定ファイルへの追記を聞かれます。次のように答えてください。
+
+- 「Would you like Wrangler to add it on your behalf?」: `yes`
+- 「What binding name would you like to use?」: `DB`（コードがこの名前を使います）
+- 「do you want to connect to the remote resource instead of a local resource?」: `no`
+
+`wrangler.jsonc` に `d1_databases` が追加されたことを確認してから、マイグレーションの適用とデプロイを行います。
 
 ```sh
 npm run db:apply:remote
 npx wrangler deploy
 ```
 
+すでに同名のD1がある場合（`A database with that name already exists`）は、`npx wrangler d1 info uploader-db` でIDを確認し、`wrangler.jsonc` の `d1_databases` に `binding` を `DB`、`database_name` と `database_id` を既存のものとして自分で書いてください。
+
 Worker名は `uploader` で、デプロイ後のURLは `https://uploader.<アカウントのサブドメイン>.workers.dev/` になります。Worker名やD1名を変えた場合は、`package.json` のスクリプトや [ADMIN.md](./ADMIN.md) のコマンドも読み替えてください。
 
 更新時も、**先にマイグレーションを適用してから**デプロイしてください。`0002_file_passwords.sql` はパスワード用の列などを、`0003_api_uploads.sql` はAPIのアップロード認証用の列を追加します。既存のファイルは保持されます。
-
-なお、公開中のアップローダーを運用している環境でローカル実行すると、本番のD1にテストデータが書き込まれます。運用中は `wrangler dev` を使わないか、`remote` を外した別設定で実行してください。
 
 ## Python CLI
 

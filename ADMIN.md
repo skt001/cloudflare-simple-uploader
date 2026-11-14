@@ -4,7 +4,7 @@
 
 ## 実行方法
 
-`uploader/` ディレクトリで実行します。D1名を `uploader-db` 以外にした場合は読み替えてください。**`wrangler.jsonc` は `remote: true` ですが、SQLの実行時は必ず `--remote` を付けて対象を明示してください。**
+`uploader/` ディレクトリで実行します。D1名を `uploader-db` 以外にした場合は読み替えてください。**SQLの実行時は必ず `--remote`（本番）か `--local`（ローカル）を付けて対象を明示してください。**
 
 ```sh
 npx wrangler d1 execute uploader-db --remote --command "SELECT 1"
