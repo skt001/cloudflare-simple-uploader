@@ -48,7 +48,7 @@ Wranglerが表示するURLをブラウザーで開き、100MiBを試す前に、
 npm install
 cp wrangler.example.jsonc wrangler.jsonc
 npx wrangler login
-npx wrangler d1 create uploader-db
+npx wrangler d1 create simple-uploader-db
 ```
 
 `d1 create` の最後に、設定ファイルへの追記を聞かれます。次のように答えてください。
@@ -64,7 +64,7 @@ npm run db:apply:remote
 npx wrangler deploy
 ```
 
-すでに同名のD1がある場合（`A database with that name already exists`）は、`npx wrangler d1 info uploader-db` でIDを確認し、`wrangler.jsonc` の `d1_databases` に `binding` を `DB`、`database_name` と `database_id` を既存のものとして自分で書いてください。
+すでに同名のD1がある場合（`A database with that name already exists`）は、`npx wrangler d1 info simple-uploader-db` でIDを確認し、`wrangler.jsonc` の `d1_databases` に `binding` を `DB`、`database_name` と `database_id` を既存のものとして自分で書いてください。
 
 Worker名は `uploader` で、デプロイ後のURLは `https://uploader.<アカウントのサブドメイン>.workers.dev/` になります。Worker名やD1名を変えた場合は、`package.json` のスクリプトや [ADMIN.md](./ADMIN.md) のコマンドも読み替えてください。
 

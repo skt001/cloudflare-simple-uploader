@@ -4,10 +4,10 @@
 
 ## 実行方法
 
-リポジトリのルートで実行します。D1名を `uploader-db` 以外にした場合は読み替えてください。**SQLの実行時は必ず `--remote`（本番）か `--local`（ローカル）を付けて対象を明示してください。**
+リポジトリのルートで実行します。D1名を `simple-uploader-db` 以外にした場合は読み替えてください。**SQLの実行時は必ず `--remote`（本番）か `--local`（ローカル）を付けて対象を明示してください。**
 
 ```sh
-npx wrangler d1 execute uploader-db --remote --command "SELECT 1"
+npx wrangler d1 execute simple-uploader-db --remote --command "SELECT 1"
 ```
 
 - 引用符の内側に `"` を書かないでください。文字列には `'` を使います。
@@ -133,7 +133,7 @@ WHERE f.id = '<UUID>' GROUP BY f.id;
 誤って消してしまった場合は、D1のTime Travelで過去の時点に戻せる可能性があります。ただし**データベース全体が戻る**ため、その間の投稿や削除も失われます。実行前に必ず現在の状態を確認し、次のコマンドで利用できる時点を確認してください。
 
 ```sh
-npx wrangler d1 time-travel info uploader-db
+npx wrangler d1 time-travel info simple-uploader-db
 ```
 
 ## 公開運用での補足

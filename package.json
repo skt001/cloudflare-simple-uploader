@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "db:apply:local": "wrangler d1 migrations apply uploader-db --local",
-    "db:apply:remote": "wrangler d1 migrations apply uploader-db --remote",
+    "db:apply:local": "wrangler d1 migrations apply simple-uploader-db --local",
+    "db:apply:remote": "wrangler d1 migrations apply simple-uploader-db --remote",
     "deploy": "wrangler deploy",
     "test": "node --test test/*.test.js"
   },

@@ -384,7 +384,7 @@ test("isolated D1 migration, password access and deletion", { timeout: 120_000 }
     assert.equal((await stat(path.join(freshConfig, "uploader"))).mode & 0o777, 0o700);
     result = await cliHome(["list"], "", { XDG_CONFIG_HOME: freshConfig });
     assert.equal(result.code, 0, result.stderr);
-    assert.equal((await stat(shellTarget)).mode & 0o777, 0o644);
+    assert.equal((await stat(shellTarget)).mode & 0o777, 0o666 & ~process.umask());
   } finally {
     if (server) {
       server.kill("SIGTERM");
