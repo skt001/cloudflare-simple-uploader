@@ -66,7 +66,7 @@ test("isolated D1 migration, password access and deletion", { timeout: 120_000 }
       compatibility_date: "2026-11-12",
       assets: { directory: path.join(root, "public"), binding: "ASSETS", run_worker_first: ["/api/*"] },
       d1_databases: [{
-        binding: "DB", database_name: "test-db",
+        binding: "simple_uploader_db", database_name: "test-db",
         database_id: "00000000-0000-0000-0000-000000000001",
         migrations_dir: migrationDir,
       }],
