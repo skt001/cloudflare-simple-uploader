@@ -277,12 +277,12 @@ async function handleUploadStart(request, env) {
   }
 
   const now = Date.now();
-  await removeExpiredUploads(env.DB, now);
+  await removeExpiredUploads(env.simple_uploader_db, now);
 
   const passwordHash = password ? await hashSecret(password) : null;
   const deleteKeyHash = deleteKey ? await hashSecret(deleteKey) : null;
   const id = crypto.randomUUID();
-  const result = await env.DB.prepare(
+  const result = await env.simple_uploader_db.prepare(
     `INSERT INTO files (id, file_no, name, mime_type, size, comment, created_at, status,
                         download_password_hash, delete_key_hash)
      SELECT ?, COALESCE((SELECT MAX(file_no) FROM files), 0) + 1,
@@ -323,7 +323,7 @@ async function handleUploadChunk(request, env, route) {
     return errorResponse("チャンクのサイズが正しくありません。", 400);
   }
 
-  const result = await env.DB.prepare(
+  const result = await env.simple_uploader_db.prepare(
     `INSERT OR IGNORE INTO file_chunks (file_id, chunk_index, data)
      SELECT ?, ?, ?
      WHERE EXISTS (
@@ -350,7 +350,7 @@ async function handleUploadChunk(request, env, route) {
     return new Response(null, { status: 204 });
   }
 
-  const existing = await env.DB.prepare(
+  const existing = await env.simple_uploader_db.prepare(
     `SELECT length(c.data) AS chunk_bytes, f.status, f.api_upload_token_hash
      FROM files AS f
      LEFT JOIN file_chunks AS c
@@ -371,14 +371,14 @@ async function handleUploadComplete(request, env, id) {
     return errorResponse("このページからのアップロードのみ受け付けます。", 403);
   }
 
-  const file = await env.DB.prepare(
+  const file = await env.simple_uploader_db.prepare(
     `SELECT size FROM files WHERE id = ? AND status = 'uploading'
      AND api_upload_token_hash IS NULL`
   ).bind(id).first();
   if (!file) return errorResponse("アップロードが見つかりません。", 404);
 
   const chunkCount = Math.ceil(file.size / UPLOAD_CHUNK_BYTES);
-  const chunks = await env.DB.prepare(
+  const chunks = await env.simple_uploader_db.prepare(
     `SELECT COUNT(*) AS chunk_count, COALESCE(SUM(length(data)), 0) AS total_bytes
      FROM file_chunks WHERE file_id = ?`
   ).bind(id).first();
@@ -386,7 +386,7 @@ async function handleUploadComplete(request, env, id) {
     return errorResponse("ファイルの受信が完了していません。再度お試しください。", 409);
   }
 
-  const result = await env.DB.prepare(
+  const result = await env.simple_uploader_db.prepare(
     `UPDATE files SET status = 'ready'
      WHERE id = ? AND status = 'uploading' AND api_upload_token_hash IS NULL`
   ).bind(id).run();
@@ -408,14 +408,14 @@ async function handleFileAuth(request, env, id, purpose) {
     return errorResponse("パスワードまたは削除キーが正しくありません。", 400);
   }
 
-  const file = await env.DB.prepare(
+  const file = await env.simple_uploader_db.prepare(
     `SELECT download_password_hash, delete_key_hash FROM files
      WHERE id = ? AND status = 'ready'`
   ).bind(id).first();
   if (!file) return errorResponse("ファイルが見つかりません。", 404);
   const stored = purpose === "download" ? file.download_password_hash : file.delete_key_hash;
   if (purpose === "delete" && stored === null) {
-    const result = await env.DB.prepare(
+    const result = await env.simple_uploader_db.prepare(
       `DELETE FROM files WHERE id = ? AND status = 'ready' AND delete_key_hash IS NULL`
     ).bind(id).run();
     if (result.meta.changes < 1) return errorResponse("ファイルが見つかりません。", 404);
@@ -428,7 +428,7 @@ async function handleFileAuth(request, env, id, purpose) {
     return errorResponse("パスワードまたは削除キーを入力してください。", 400);
   }
 
-  if (!await reserveAuthAttempt(env.DB, id, purpose)) {
+  if (!await reserveAuthAttempt(env.simple_uploader_db, id, purpose)) {
     return errorResponse("認証の試行回数が多すぎます。しばらく待ってからお試しください。", 429);
   }
   if (!await verifySecret(secret, stored)) {
@@ -438,7 +438,7 @@ async function handleFileAuth(request, env, id, purpose) {
     );
   }
   if (purpose === "delete") {
-    const result = await env.DB.prepare(
+    const result = await env.simple_uploader_db.prepare(
       `DELETE FROM files WHERE id = ? AND status = 'ready' AND delete_key_hash = ?`
     ).bind(id, stored).run();
     if (result.meta.changes < 1) return errorResponse("ファイルが見つかりません。", 404);
@@ -447,13 +447,13 @@ async function handleFileAuth(request, env, id, purpose) {
 
   const token = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
   const now = Date.now();
-  await env.DB.batch([
-    env.DB.prepare(`DELETE FROM file_download_tokens WHERE expires_at <= ?`).bind(now),
-    env.DB.prepare(
+  await env.simple_uploader_db.batch([
+    env.simple_uploader_db.prepare(`DELETE FROM file_download_tokens WHERE expires_at <= ?`).bind(now),
+    env.simple_uploader_db.prepare(
       `INSERT INTO file_download_tokens (token_hash, file_id, expires_at) VALUES (?, ?, ?)`
     ).bind(await tokenHash(token), id, now + DOWNLOAD_TOKEN_TTL_MS),
   ]);
-  await clearAuthAttempts(env.DB, id, purpose);
+  await clearAuthAttempts(env.simple_uploader_db, id, purpose);
   return jsonResponse({ token });
 }
 
@@ -465,7 +465,7 @@ async function handleDownloadRange(request, env, id, url) {
     return errorResponse("ダウンロード範囲が正しくありません。", 416);
   }
 
-  const file = await env.DB.prepare(
+  const file = await env.simple_uploader_db.prepare(
     `SELECT name, size, download_password_hash IS NOT NULL AS has_password
      FROM files WHERE id = ? AND status = 'ready'`
   ).bind(id).first();
@@ -475,7 +475,7 @@ async function handleDownloadRange(request, env, id, url) {
   if (file.has_password) {
     const match = request.headers.get("Authorization")?.match(/^Bearer ([0-9a-f]{64})$/);
     if (!match) return errorResponse("ダウンロードパスワードの認証が必要です。", 401);
-    const session = await env.DB.prepare(
+    const session = await env.simple_uploader_db.prepare(
       `SELECT 1 AS valid FROM file_download_tokens
        WHERE token_hash = ? AND file_id = ? AND expires_at > ?`
     ).bind(await tokenHash(match[1]), id, Date.now()).first();
@@ -484,7 +484,7 @@ async function handleDownloadRange(request, env, id, url) {
 
   const firstChunk = Math.floor(start / UPLOAD_CHUNK_BYTES);
   const lastChunk = Math.floor(end / UPLOAD_CHUNK_BYTES);
-  const result = await env.DB.prepare(
+  const result = await env.simple_uploader_db.prepare(
     `SELECT chunk_index, data FROM file_chunks
      WHERE file_id = ? AND chunk_index BETWEEN ? AND ?
      ORDER BY chunk_index`
@@ -510,7 +510,7 @@ async function handleDownloadRange(request, env, id, url) {
   }
 
   if (start === 0) {
-    await env.DB.prepare(
+    await env.simple_uploader_db.prepare(
       `UPDATE files SET download_count = download_count + 1 WHERE id = ?`
     ).bind(id).run();
   }
@@ -532,10 +532,10 @@ async function handleDownloadRange(request, env, id, url) {
 async function handleApi(request, env, url) {
   const { pathname } = url;
   if (pathname === "/api/status" && request.method === "GET") {
-    return handleStatus(env.DB);
+    return handleStatus(env.simple_uploader_db);
   }
   if (pathname === "/api/files" && request.method === "GET") {
-    return handleList(env.DB, url);
+    return handleList(env.simple_uploader_db, url);
   }
   if (pathname === "/api/uploads" && request.method === "POST") {
     return handleUploadStart(request, env);
