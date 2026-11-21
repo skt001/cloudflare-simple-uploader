@@ -9,12 +9,5 @@
 		"run_worker_first": [
 			"/api/*"
 		]
-	},
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "simple-uploader-db",
-			"database_id": "6174d103-ad45-4710-9198-eb5fce4b1d5f"
-		}
-	]
+	}
 }
