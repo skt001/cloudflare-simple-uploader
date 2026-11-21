@@ -73,13 +73,13 @@ async function startUpload(request, env, h) {
   if (size > h.MAX_FILE_BYTES) return error("PAYLOAD_TOO_LARGE", "ファイルサイズが上限を超えています。", 413);
 
   const now = Date.now();
-  await h.removeExpiredUploads(env.DB, now);
+  await h.removeExpiredUploads(env.simple_uploader_db, now);
   const passwordHash = password ? await h.hashSecret(password) : null;
   const deleteHash = deleteKey ? await h.hashSecret(deleteKey) : null;
   const uploadId = crypto.randomUUID();
   const uploadToken = h.bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
   const expiresAt = now + h.INCOMPLETE_TTL_MS;
-  const result = await env.DB.prepare(
+  const result = await env.simple_uploader_db.prepare(
     `INSERT INTO files (id, file_no, name, mime_type, size, comment, created_at, status,
                         download_password_hash, delete_key_hash, api_upload_token_hash, api_upload_expires_at)
      SELECT ?, COALESCE((SELECT MAX(file_no) FROM files), 0) + 1,
@@ -95,7 +95,7 @@ async function startUpload(request, env, h) {
 }
 
 async function uploadChunk(request, env, id, indexText, h) {
-  const session = await uploadSession(request, env.DB, id, h);
+  const session = await uploadSession(request, env.simple_uploader_db, id, h);
   if (!session) return notFoundUpload();
   if (session.status !== "uploading") return finalized();
   const index = Number(indexText);
@@ -123,7 +123,7 @@ async function uploadChunk(request, env, id, indexText, h) {
   }
   const token = request.headers.get("Authorization").slice(7);
   const hash = await h.tokenHash(token);
-  const result = await env.DB.prepare(
+  const result = await env.simple_uploader_db.prepare(
     `INSERT OR IGNORE INTO file_chunks (file_id, chunk_index, data)
      SELECT ?, ?, ? WHERE EXISTS (
        SELECT 1 FROM files WHERE id = ? AND status = 'uploading'
@@ -131,10 +131,10 @@ async function uploadChunk(request, env, id, indexText, h) {
      )`
   ).bind(id, index, bytes, id, hash, Date.now()).run();
   if (result.meta.changes === 1) return new Response(null, { status: 204 });
-  const current = await uploadSession(request, env.DB, id, h);
+  const current = await uploadSession(request, env.simple_uploader_db, id, h);
   if (!current) return notFoundUpload();
   if (current.status !== "uploading") return finalized();
-  const existing = await env.DB.prepare(
+  const existing = await env.simple_uploader_db.prepare(
     `SELECT data = ? AS matches FROM file_chunks WHERE file_id = ? AND chunk_index = ?`
   ).bind(bytes, id, index).first();
   if (existing?.matches) return new Response(null, { status: 204 });
@@ -142,12 +142,12 @@ async function uploadChunk(request, env, id, indexText, h) {
 }
 
 async function completeUpload(request, env, id, h) {
-  const session = await uploadSession(request, env.DB, id, h);
+  const session = await uploadSession(request, env.simple_uploader_db, id, h);
   if (!session) return notFoundUpload();
   if (session.status === "ready") {
     return h.jsonResponse({ id, number: session.file_no, size: session.size });
   }
-  const result = await env.DB.prepare(
+  const result = await env.simple_uploader_db.prepare(
     `UPDATE files SET status = 'ready'
      WHERE id = ? AND status = 'uploading' AND api_upload_token_hash = ?
        AND api_upload_expires_at > ?
@@ -156,7 +156,7 @@ async function completeUpload(request, env, id, h) {
   ).bind(id, await h.tokenHash(request.headers.get("Authorization").slice(7)), Date.now(),
     id, Math.ceil(session.size / h.UPLOAD_CHUNK_BYTES), id).run();
   if (result.meta.changes !== 1) {
-    const current = await uploadSession(request, env.DB, id, h);
+    const current = await uploadSession(request, env.simple_uploader_db, id, h);
     if (!current) return notFoundUpload();
     if (current.status === "ready") return h.jsonResponse({ id, number: current.file_no, size: current.size });
     return error("UPLOAD_INCOMPLETE", "ファイルの受信が完了していません。", 409);
@@ -165,15 +165,15 @@ async function completeUpload(request, env, id, h) {
 }
 
 async function cancelUpload(request, env, id, h) {
-  const session = await uploadSession(request, env.DB, id, h);
+  const session = await uploadSession(request, env.simple_uploader_db, id, h);
   if (!session) return notFoundUpload();
   if (session.status === "ready") return finalized();
-  const result = await env.DB.prepare(
+  const result = await env.simple_uploader_db.prepare(
     `DELETE FROM files WHERE id = ? AND status = 'uploading'
      AND api_upload_token_hash = ? AND api_upload_expires_at > ?`
   ).bind(id, await h.tokenHash(request.headers.get("Authorization").slice(7)), Date.now()).run();
   if (result.meta.changes < 1) {
-    const current = await uploadSession(request, env.DB, id, h);
+    const current = await uploadSession(request, env.simple_uploader_db, id, h);
     return current?.status === "ready" ? finalized() : notFoundUpload();
   }
   return new Response(null, { status: 204 });
@@ -195,7 +195,7 @@ async function fileAction(request, env, id, action, h) {
   });
   if (!mapped.ok || action === "delete") return mapped;
   const body = await mapped.json();
-  const session = await env.DB.prepare(
+  const session = await env.simple_uploader_db.prepare(
     `SELECT expires_at FROM file_download_tokens WHERE token_hash = ? AND file_id = ?`
   ).bind(await h.tokenHash(body.token), id).first();
   if (!session) return error("FILE_NOT_FOUND", "ファイルが見つかりません。", 404);
@@ -203,7 +203,7 @@ async function fileAction(request, env, id, action, h) {
 }
 
 async function download(request, env, id, h) {
-  const file = await env.DB.prepare(
+  const file = await env.simple_uploader_db.prepare(
     `SELECT size FROM files WHERE id = ? AND status = 'ready'`
   ).bind(id).first();
   if (!file) return error("FILE_NOT_FOUND", "ファイルが見つかりません。", 404);
@@ -236,17 +236,17 @@ export async function handleV1(request, env, url, h) {
     }
     const path = url.pathname.slice("/api/v1".length);
     if (request.method === "GET" && path === "/status") {
-      const status = await (await h.handleStatus(env.DB)).json();
+      const status = await (await h.handleStatus(env.simple_uploader_db)).json();
       return h.jsonResponse({ ...status, uploadChunkBytes: h.UPLOAD_CHUNK_BYTES, maxDownloadRangeBytes: h.DOWNLOAD_BLOCK_BYTES });
     }
     if (request.method === "GET" && path === "/files") {
-      return await adapt(await h.handleList(env.DB, url), { 400: "INVALID_REQUEST" });
+      return await adapt(await h.handleList(env.simple_uploader_db, url), { 400: "INVALID_REQUEST" });
     }
     const byNumber = path.match(/^\/files\/by-number\/(\d+)$/);
     if (request.method === "GET" && byNumber) {
       const number = Number(byNumber[1]);
       if (!Number.isSafeInteger(number) || number < 1) return error("INVALID_REQUEST", "番号が正しくありません。", 400);
-      const file = await env.DB.prepare(
+      const file = await env.simple_uploader_db.prepare(
         `SELECT id, file_no, name, size, comment, created_at, download_count,
                 download_password_hash IS NOT NULL AS has_password,
                 delete_key_hash IS NOT NULL AS has_delete_key
