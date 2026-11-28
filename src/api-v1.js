@@ -266,7 +266,7 @@ export async function handleV1(request, env, url, h) {
       if (request.method === "GET" && file[2] === "content") return await download(request, env, file[1], h);
       if (request.method === "POST" && file[2] !== "content") return await fileAction(request, env, file[1], file[2], h);
     }
-    return error("FILE_NOT_FOUND", "指定されたAPIはありません。", 404);
+    return error("NOT_FOUND", "指定されたAPIはありません。", 404);
   } catch (e) {
     console.error("API v1 request failed:", e);
     return error("INTERNAL_ERROR", "処理中にエラーが発生しました。", 500);
